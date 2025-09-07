@@ -1,0 +1,438 @@
+{
+  "nodes": {
+    "A": {
+      "coords": [
+        0,
+        0
+      ],
+      "name": "Washroom",
+      "color": "red"
+    },
+    "B": {
+      "coords": [
+        0,
+        4.27
+      ],
+      "name": "N112",
+      "color": "blue"
+    },
+    "C": {
+      "coords": [
+        0,
+        20.27
+      ],
+      "name": "N111",
+      "color": "blue"
+    },
+    "D": {
+      "coords": [
+        0,
+        42.32
+      ],
+      "name": "N110",
+      "color": "blue"
+    },
+    "E": {
+      "coords": [
+        0,
+        56.14
+      ],
+      "name": "N109",
+      "color": "blue"
+    },
+    "F": {
+      "coords": [
+        0,
+        73.43
+      ],
+      "name": "Washroom",
+      "color": "red"
+    },
+    "G": {
+      "coords": [
+        0,
+        92.72
+      ],
+      "name": "N108",
+      "color": "blue"
+    },
+    "H": {
+      "coords": [
+        3,
+        89.19
+      ],
+      "name": "N107",
+      "color": "green"
+    },
+    "I": {
+      "coords": [
+        4,
+        77.44
+      ],
+      "name": "N106",
+      "color": "green"
+    },
+    "J": {
+      "coords": [
+        5,
+        65.47
+      ],
+      "name": "N105",
+      "color": "green"
+    },
+    "K": {
+      "coords": [
+        6,
+        53.51
+      ],
+      "name": "N104",
+      "color": "blue"
+    },
+    "L": {
+      "coords": [
+        7,
+        40.33
+      ],
+      "name": "Staircase",
+      "color": "red"
+    },
+    "M": {
+      "coords": [
+        6,
+        31
+      ],
+      "name": "N103",
+      "color": "green"
+    },
+    "N": {
+      "coords": [
+        5,
+        19.22
+      ],
+      "name": "N102",
+      "color": "green"
+    },
+    "O": {
+      "coords": [
+        4,
+        -2
+      ],
+      "name": "N101",
+      "color": "green"
+    }
+  },
+  "edges": [
+    {
+      "from": "A",
+      "to": "B",
+      "weight": 4.27,
+      "instruction": [
+        "Turn 90 degree to right",
+        "Walk 9 steps straight to N112"
+      ]
+    },
+    {
+      "from": "A",
+      "to": "O",
+      "weight": 8.9,
+      "instruction": [
+        "Turn backwards",
+        "Head slightly to right",
+        "Becareful, there are tables at the middle of pathway",
+        "Walk 18 steps straight to N101"
+      ]
+    },
+    {
+      "from": "B",
+      "to": "A",
+      "weight": 4.27,
+      "instruction": [
+        "Turn 90 degree to left",
+        "Walk 9 steps straight to Washroom"
+      ]
+    },
+    {
+      "from": "B",
+      "to": "C",
+      "weight": 16,
+      "instruction": [
+        "Turn 90 degree to right",
+        "Walk 32 steps straight to N111"
+      ]
+    },
+    {
+      "from": "C",
+      "to": "B",
+      "weight": 16,
+      "instruction": [
+        "Turn 90 degree to right",
+        "Walk 32 steps straight to N112"
+      ]
+    },
+    {
+      "from": "C",
+      "to": "D",
+      "weight": 20.05,
+      "instruction": [
+        "Turn 90 degree to right",
+        "Walk 40 steps straight to N110"
+      ]
+    },
+    {
+      "from": "D",
+      "to": "C",
+      "weight": 20.05,
+      "instruction": [
+        "Turn 90 degree to right",
+        "Walk 40 steps straight to N111"
+      ]
+    },
+    {
+      "from": "D",
+      "to": "E",
+      "weight": 15.82,
+      "instruction": [
+        "Turn 90 degree to right",
+        "Walk 32 steps straight to N109"
+      ]
+    },
+    {
+      "from": "E",
+      "to": "F",
+      "weight": 17.29,
+      "instruction": [
+        "Turn 90 degree to right",
+        "Walk 35 steps straight to Washroom"
+      ]
+    },
+    {
+      "from": "E",
+      "to": "D",
+      "weight": 15.82,
+      "instruction": [
+        "Turn 90 degree to right",
+        "Walk 32 steps straight to N110"
+      ]
+    },
+    {
+      "from": "F",
+      "to": "E",
+      "weight": 17.29,
+      "instruction": [
+        "Turn 90 degree to right",
+        "Walk 35 steps straight to N109"
+      ]
+    },
+    {
+      "from": "F",
+      "to": "G",
+      "weight": 19.29,
+      "instruction": [
+        "Turn 90 degree to right",
+        "Walk 39 steps straight to N108"
+      ]
+    },
+    {
+      "from": "G",
+      "to": "H",
+      "weight": 8.97,
+      "instruction": [
+        "Turn backwards",
+        "Head slightly to right",
+        "walk 18 steps straight to N107"
+      ]
+    },
+    {
+      "from": "G",
+      "to": "F",
+      "weight": 19.29,
+      "instruction": [
+        "Turn 90 degree to left",
+        "Walk 39 steps straight to N109"
+      ]
+    },
+    {
+      "from": "H",
+      "to": "G",
+      "weight": 8.97,
+      "instruction": [
+        "Turn backwards",
+        "Head slightly to right",
+        "walk 18 steps straight to N108"
+      ]
+    },
+    {
+      "from": "H",
+      "to": "I",
+      "weight": 11.79,
+      "instruction": [
+        "Turn 90 degree to left",
+        "Walk 24 steps straight to N106"
+      ]
+    },
+    {
+      "from": "I",
+      "to": "H",
+      "weight": 11.79,
+      "instruction": [
+        "Turn 90 degree to left",
+        "Walk 24 steps straight to N107"
+      ]
+    },
+    {
+      "from": "I",
+      "to": "J",
+      "weight": 12.01,
+      "instruction": [
+        "Turn 90 degree to right",
+        "Walk 24 steps straight to N105"
+      ]
+    },
+    {
+      "from": "J",
+      "to": "I",
+      "weight": 12.01,
+      "instruction": [
+        "Turn 90 degree to left",
+        "Walk 24 steps straight to N106"
+      ]
+    },
+    {
+      "from": "J",
+      "to": "K",
+      "weight": 12,
+      "instruction": [
+        "Turn 90 degree to right",
+        "Walk 24 steps straight to N104"
+      ]
+    },
+    {
+      "from": "K",
+      "to": "L",
+      "weight": 13.22,
+      "instruction": [
+        "Turn 90 degree to right",
+        "Walk 26 steps straight to staircase"
+      ]
+    },
+    {
+      "from": "K",
+      "to": "J",
+      "weight": 12,
+      "instruction": [
+        "Turn 90 degree to left",
+        "Walk 24 steps straight to N105"
+      ]
+    },
+    {
+      "from": "L",
+      "to": "K",
+      "weight": 13.22,
+      "instruction": [
+        "Turn 90 degree to left",
+        "Walk 26 steps straight to N104"
+      ]
+    },
+    {
+      "from": "L",
+      "to": "M",
+      "weight": 9.38,
+      "instruction": [
+        "Turn 90 degree to right",
+        "Walk 19 steps straight to N103"
+      ]
+    },
+    {
+      "from": "M",
+      "to": "L",
+      "weight": 9.38,
+      "instruction": [
+        "Turn 90 degree to left",
+        "Walk 19 steps straight to staircase"
+      ]
+    },
+    {
+      "from": "M",
+      "to": "N",
+      "weight": 11.83,
+      "instruction": [
+        "Turn 90 degree to right",
+        "Walk 24 steps straight to N102"
+      ]
+    },
+    {
+      "from": "N",
+      "to": "M",
+      "weight": 11.83,
+      "instruction": [
+        "Turn 90 degree to left",
+        "Walk 24 steps straight to N103"
+      ]
+    },
+    {
+      "from": "N",
+      "to": "O",
+      "weight": 21.24,
+      "instruction": [
+        "Turn 90 degree to right",
+        "Walk 42 steps straight to N101"
+      ]
+    },
+    {
+      "from": "O",
+      "to": "N",
+      "weight": 21.24,
+      "instruction": [
+        "Turn 90 degree to right",
+        "Walk 42 steps straight to N102"
+      ]
+    },
+    {
+      "from": "O",
+      "to": "A",
+      "weight": 8.9,
+      "instruction": [
+        "Turn backwards",
+        "Head slightly to right",
+        "Becareful, there are tables at the middle of pathway",
+        "Walk 18 steps straight to washroom"
+      ]
+    },
+    {
+      "from": "D",
+      "to": "L",
+      "weight": 11.51,
+      "instruction": [
+        "Turn backwards",
+        "Walk 23 steps straight to staircase"
+      ]
+    },
+    {
+      "from": "L",
+      "to": "D",
+      "weight": 11.51,
+      "instruction": [
+        "Turn backwards",
+        "Walk 23 steps straight to N110"
+      ]
+    },
+    {
+      "from": "F",
+      "to": "I",
+      "weight": 8.25,
+      "instruction": [
+        "Turn backwards",
+        "Walk 16 steps straight to N106"
+      ]
+    },
+    {
+      "from": "I",
+      "to": "F",
+      "weight": 8.25,
+      "instruction": [
+        "Turn backwards",
+        "Walk {steps} steps straight to washroom"
+      ]
+    }
+  ]
+}

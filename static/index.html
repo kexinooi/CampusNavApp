@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Indoor Navigation</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        text-align: center;
+        background: #f2f2f2;
+      }
+      #video {
+        display: none;
+        width: 100%;
+        max-width: 480px;
+        margin: 20px auto;
+      }
+      #status {
+        margin-top: 20px;
+        font-size: 1.2em;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Welcome to IndoorGo</h1>
+    <p>Click anywhere to start.</p>
+    <video
+      id="video"
+      autoplay
+      playsinline
+      style="
+        width: 100%;
+        max-width: 400px;
+        border: 2px solid black;
+        background: #000;
+      "
+    ></video>
+
+    <div id="status"></div>
+
+    <script>
+      let stream = null;
+      let currentNode = null;
+      let cameraStarted = false;
+      let scanningActive = false;
+
+      // ---------------- Room Mapping ----------------
+      const room_to_node = {
+        1: "O",
+        2: "N",
+        3: "M",
+        Staircase: "L",
+        4: "K",
+        5: "J",
+        6: "I",
+        7: "H",
+        8: "G",
+        "Washroom 2": "F",
+        9: "E",
+        10: "D",
+        11: "C",
+        12: "B",
+        "Washroom 1": "A",
+      };
+
+      // ---------------- Audio Helpers ----------------
+      function speak(text, rate = 0.6) {
+        return new Promise((resolve) => {
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.lang = "en-US";
+          utterance.rate = rate;
+          utterance.onend = resolve;
+          speechSynthesis.speak(utterance);
+        });
+      }
+
+      function listen(callback) {
+        const recognition = new (window.SpeechRecognition ||
+          window.webkitSpeechRecognition)();
+        recognition.lang = "en-US";
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+        recognition.onresult = (event) =>
+          callback(event.results[0][0].transcript.toLowerCase());
+        recognition.onerror = () => callback("");
+        recognition.start();
+      }
+
+      // ---------------- Status Display ----------------
+      function showStatus(msg) {
+        document.getElementById("status").innerText = msg;
+      }
+
+      // ---------------- Camera Control ----------------
+      async function startCamera() {
+        if (cameraStarted) return stream;
+
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "environment" },
+          });
+          const video = document.getElementById("video");
+          video.srcObject = stream;
+          video.style.display = "block";
+          cameraStarted = true;
+          showStatus("Camera ready.");
+          await speak("Camera ready.");
+          return stream;
+        } catch (e) {
+          showStatus("Camera access denied.");
+          await speak("Camera access denied.");
+          return null;
+        }
+      }
+
+      function stopCamera() {
+        if (stream) {
+          stream.getTracks().forEach((t) => t.stop());
+          stream = null;
+        }
+        const video = document.getElementById("video");
+        video.srcObject = null;
+        video.style.display = "none";
+        cameraStarted = false;
+        console.log("Camera stopped");
+      }
+
+      // ---------------- Welcome Page ----------------
+      function showWelcome() {
+        showStatus("Tap anywhere to start");
+        const handler = async () => {
+          document.body.removeEventListener("click", handler);
+          await startCamera();
+          startScanning();
+        };
+        document.body.addEventListener("click", handler);
+      }
+
+      async function startScanning() {
+        if (scanningActive) return;
+        scanningActive = true;
+
+        const video = document.getElementById("video");
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        let lastInstruction = "";
+        let hasScanned = false;
+
+        showStatus("Scanning for QR... Tap anywhere to exit.");
+
+        const exitHandler = () => {
+          speak("Exiting scan.", 0.6);
+          showStatus("Scan exited. Returning to menu...");
+          clearInterval(scanInterval);
+          scanningActive = false;
+          stopCamera();
+          document.body.removeEventListener("click", exitHandler);
+          showWelcome(); // back to welcome page
+        };
+        document.body.addEventListener("click", exitHandler);
+
+        const scanInterval = setInterval(async () => {
+          if (!video.videoWidth) return;
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+          const blob = await new Promise((res) =>
+            canvas.toBlob(res, "image/jpeg")
+          );
+          const formData = new FormData();
+          formData.append("file", blob, "frame.jpg");
+
+          try {
+            const res = await fetch("http://127.0.0.1:8000/process_frame/", {
+              method: "POST",
+              body: formData,
+            });
+            if (!res.ok) return;
+
+            const data = await res.json();
+
+            if (data.status === "scanned" && data.qr_data && !hasScanned) {
+              hasScanned = true;
+              currentNode = data.qr_data.toUpperCase();
+              await speak("Current location set: " + currentNode);
+              showStatus("QR Found: " + currentNode + ". Preparing menu...");
+              clearInterval(scanInterval);
+              scanningActive = false;
+              stopCamera();
+              document.body.removeEventListener("click", exitHandler);
+              setTimeout(userMenu, 1000);
+            } else if (data.status === "pre_scan") {
+              // Take the highest priority instruction
+              const mainInstruction = data.instructions[0]?.action || "";
+              const distance = data.estimated_distance?.toFixed(2);
+              let directionText = "";
+
+              // Map backend instruction to user-friendly phrase
+              switch (mainInstruction) {
+                case "move_slightly_left":
+                  directionText = "Please move slightly left";
+                  break;
+                case "move_slightly_right":
+                  directionText = "Please move slightly right";
+                  break;
+                case "move_sharply_left":
+                  directionText = "Move sharply left";
+                  break;
+                case "move_sharply_right":
+                  directionText = "Move sharply right";
+                  break;
+                case "tilt_up":
+                  directionText = "Tilt camera up";
+                  break;
+                case "tilt_down":
+                  directionText = "Tilt camera down";
+                  break;
+                case "move_forward_fast":
+                  directionText = "Move forward quickly";
+                  break;
+                case "move_forward":
+                  directionText = "Move forward";
+                  break;
+                case "approach_slowly":
+                  directionText = "Approach slowly";
+                  break;
+                default:
+                  directionText = "Adjust your position";
+              }
+
+              const phrase = `${directionText}. QR is about ${distance} meters ahead.`;
+              if (phrase !== lastInstruction) {
+                await speak(phrase);
+                showStatus(phrase);
+                lastInstruction = phrase;
+              }
+            } else {
+              showStatus("Scanning...");
+            }
+          } catch (e) {
+            showStatus("Backend error: " + e);
+          }
+        }, 700);
+      }
+
+      // ---------------- User Menu ----------------
+      function userMenu() {
+        showStatus("Menu: Destination, Color Scan, Relocate. Say your choice.");
+        speak(
+          "Select an option. Say: destination, color scan, or relocate. Tap anywhere to exit.",
+          0.6
+        ).then(() => {
+          const listenForChoice = () => {
+            let timeout = setTimeout(() => {
+              speak(
+                "Still listening. Please say destination, color scan, or relocate.",
+                0.6
+              ).then(listenForChoice);
+            }, 8000);
+
+            listen((choice) => {
+              clearTimeout(timeout);
+              choice = choice.toLowerCase().trim();
+
+              if (choice.includes("destination"))
+                speak(
+                  "Which destination? Say 1 to 12, washroom, or staircase.",
+                  0.6
+                ).then(askDestination);
+              else if (choice.includes("color"))
+                speak("Which color to scan? Red, green, or blue.", 0.6).then(
+                  askColor
+                );
+              else if (choice.includes("relocate"))
+                speak("Opening camera to relocate your position.", 0.6).then(
+                  startScanning
+                );
+              else
+                speak(
+                  "I did not understand. Please say destination, color scan, or relocate.",
+                  0.6
+                ).then(listenForChoice);
+            });
+          };
+          listenForChoice();
+        });
+
+        const exitHandler = () => {
+          speak("Exiting menu. Returning to home page.", 0.6);
+          showStatus("Menu exited.");
+          document.body.removeEventListener("click", exitHandler);
+          showWelcome(); // replace with your actual home page function
+        };
+
+        document.body.addEventListener("click", exitHandler);
+      }
+
+      // ---------------- Ask Color ----------------
+      async function askColor() {
+        showStatus("Say a color: red, green, or blue. Tap to exit.");
+
+        const exitHandler = () => {
+          speak("Exiting color selection. Returning to menu.", 0.6);
+          showStatus("Color selection exited.");
+          document.body.removeEventListener("click", exitHandler); // cleanup
+          userMenu();
+        };
+        document.body.addEventListener("click", exitHandler);
+
+        const listenForColor = () => {
+          let timeout = setTimeout(() => {
+            speak("Still listening. Please say red, green, or blue.", 0.6).then(
+              listenForColor
+            );
+          }, 8000);
+
+          listen(async (color) => {
+            clearTimeout(timeout);
+            const input = color.toLowerCase().trim();
+            const detectedColor = ["red", "green", "blue"].find((c) =>
+              input.includes(c)
+            );
+
+            if (!detectedColor) {
+              speak("Invalid color. Please try again.", 0.6).then(() => {
+                showStatus("Unrecognized input. Listening again...");
+                listenForColor();
+              });
+              return;
+            }
+
+            // Remove click handler since user made a valid selection
+            document.body.removeEventListener("click", exitHandler);
+
+            // ✅ Call backend to find nearest QR of that color
+            const formData = new FormData();
+            formData.append("current_node", currentNode);
+            formData.append("target_color", detectedColor);
+
+            try {
+              const res = await fetch(
+                "http://127.0.0.1:8000/find_nearest_color/",
+                {
+                  method: "POST",
+                  body: formData,
+                }
+              );
+              const data = await res.json();
+
+              if (data.status === "ok") {
+                const nearestQR = data.nearest_node;
+                await speak(
+                  `Nearest ${detectedColor} QR is ${nearestQR}. Navigating there.`
+                );
+                showStatus(
+                  `Navigating to nearest ${detectedColor} QR: ${nearestQR}`
+                );
+
+                // ✅ Continue with normal navigation logic
+                startNavigation(nearestQR);
+              } else {
+                await speak(data.message, 0.6);
+                showStatus(data.message);
+                listenForColor();
+              }
+            } catch (e) {
+              await speak("Error contacting server. Try again.", 0.6);
+              showStatus("Server error: " + e);
+              listenForColor();
+            }
+          });
+        };
+
+        listenForColor();
+      }
+
+      // ---------------- Destination ----------------
+      function askDestination() {
+        showStatus(
+          "Say a destination: 1–12, Washroom, or Staircase. Tap to exit."
+        );
+
+        const exitHandler = () => {
+          speak("Exiting destination selection. Returning to menu.", 0.6);
+          showStatus("Destination selection exited.");
+          document.body.removeEventListener("click", exitHandler); // cleanup
+          userMenu();
+        };
+        document.body.addEventListener("click", exitHandler);
+
+        const numberWords = {
+          one: "1",
+          two: "2",
+          three: "3",
+          four: "4",
+          five: "5",
+          six: "6",
+          seven: "7",
+          eight: "8",
+          nine: "9",
+          ten: "10",
+          eleven: "11",
+          twelve: "12",
+        };
+
+        const normalizeInput = (input) => {
+          input = input.toLowerCase().trim();
+          if (numberWords[input]) return numberWords[input];
+          const match = input.match(/(room|number)?\s*(\d{1,2})/);
+          if (match) return match[2];
+          if (input.includes("washroom") || input.includes("toilet"))
+            return "washroom";
+          if (input.includes("stair")) return "staircase";
+          return input;
+        };
+
+        const listenForDestination = () => {
+          let timeout = setTimeout(() => {
+            speak(
+              "Still listening. Please say a number from 1 to 12, Washroom, or Staircase.",
+              0.6
+            ).then(listenForDestination);
+          }, 8000);
+
+          listen((dest) => {
+            clearTimeout(timeout);
+            const normalized = normalizeInput(dest);
+            const lookupKey = Object.keys(room_to_node).find(
+              (k) => k.toString().toLowerCase() === normalized
+            );
+
+            if (lookupKey) {
+              const nodeId = room_to_node[lookupKey];
+              document.body.removeEventListener("click", exitHandler); // remove listener on valid selection
+              speak(
+                "You selected " + lookupKey + ". Starting navigation.",
+                0.6
+              ).then(() => startNavigation(nodeId));
+            } else {
+              speak("Invalid destination. Please try again.", 0.6).then(
+                listenForDestination
+              );
+            }
+          });
+        };
+
+        listenForDestination();
+      }
+
+      // ---------------- Navigation Flow ----------------
+      async function startNavigation(destination) {
+        if (!cameraStarted) {
+          const s = await startCamera();
+          if (!s) return;
+        }
+
+        const video = document.getElementById("video");
+        let exitRequested = false;
+
+        // Tap to cancel navigation anytime
+        const exitHandler = () => {
+          exitRequested = true;
+          speak("Navigation cancelled. Returning to menu.", 0.6);
+          showStatus("Navigation exited.");
+          stopCamera();
+          document.body.removeEventListener("click", exitHandler);
+          userMenu();
+        };
+        document.body.addEventListener("click", exitHandler);
+
+        async function navigateStep(start, end) {
+          if (exitRequested) return;
+
+          try {
+            const res = await fetch("http://127.0.0.1:8000/start_dest/", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ start, end }),
+            });
+            const data = await res.json();
+
+            if (!data.instructions || data.instructions.length === 0) {
+              await speak("No path found. Please try again.", 0.6);
+              stopCamera();
+              return;
+            }
+
+            const instructionText = data.instructions.join(", ");
+            await speak("Follow these steps: " + instructionText, 0.6);
+            showStatus("Instructions: " + instructionText);
+
+            await speak("Please scan the next QR code to continue", 0.6);
+            const scanned = await waitForQR(video); // uses same video
+            if (exitRequested) return;
+
+            currentNode = scanned.toUpperCase();
+
+            if (currentNode === end.toUpperCase()) {
+              await speak("You have arrived at " + end, 0.6);
+              showStatus("Arrived at destination!");
+              stopCamera();
+
+              // Ask user if they want to continue or quit
+              const choiceHandler = () => {
+                document.body.removeEventListener("click", choiceHandler);
+                speak(
+                  "Do you want to continue to the menu, or quit to the welcome page?",
+                  0.6
+                ).then(async () => {
+                  listen(async (answer) => {
+                    const response = answer.toLowerCase();
+                    if (
+                      response.includes("continue") ||
+                      response.includes("menu")
+                    ) {
+                      userMenu();
+                    } else if (
+                      response.includes("quit") ||
+                      response.includes("welcome")
+                    ) {
+                      showWelcome();
+                    } else {
+                      // If unrecognized, ask again
+                      await speak("Please say continue or quit.", 0.6);
+                      choiceHandler();
+                    }
+                  });
+                });
+              };
+
+              document.body.addEventListener("click", choiceHandler);
+            } else {
+              await speak(
+                "Scanned " + currentNode + ". Rerouting to " + end,
+                0.6
+              );
+              showStatus("Rerouting from " + currentNode + "...");
+              navigateStep(currentNode, end);
+            }
+          } catch (e) {
+            showStatus("Navigation error: " + e);
+            await speak("Navigation error. Retrying.", 0.6);
+            setTimeout(() => navigateStep(start, end), 1000);
+          }
+        }
+
+        navigateStep(currentNode, destination);
+      }
+
+      async function waitForQR(video) {
+        return new Promise((resolve) => {
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+          let lastInstruction = "";
+
+          const interval = setInterval(async () => {
+            if (!video.videoWidth) return;
+
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const blob = await new Promise((res) =>
+              canvas.toBlob(res, "image/jpeg")
+            );
+
+            const formData = new FormData();
+            formData.append("file", blob, "frame.jpg");
+
+            try {
+              const res = await fetch("http://127.0.0.1:8000/process_frame/", {
+                method: "POST",
+                body: formData,
+              });
+
+              if (res.ok) {
+                const data = await res.json();
+
+                // QR fully scanned
+                if (data.status === "scanned" && data.qr_data) {
+                  clearInterval(interval);
+                  resolve(data.qr_data.toUpperCase());
+                }
+                // Pre-scan: provide dynamic movement instructions
+                else if (
+                  data.status === "pre_scan" &&
+                  data.instructions.length > 0
+                ) {
+                  const mainInstruction = data.instructions[0].action;
+                  const distance = data.estimated_distance?.toFixed(2);
+                  let directionText = "";
+
+                  switch (mainInstruction) {
+                    case "move_slightly_left":
+                      directionText = "Please move slightly left";
+                      break;
+                    case "move_slightly_right":
+                      directionText = "Please move slightly right";
+                      break;
+                    case "move_sharply_left":
+                      directionText = "Move sharply left";
+                      break;
+                    case "move_sharply_right":
+                      directionText = "Move sharply right";
+                      break;
+                    case "tilt_up":
+                      directionText = "Tilt camera up";
+                      break;
+                    case "tilt_down":
+                      directionText = "Tilt camera down";
+                      break;
+                    case "move_forward_fast":
+                      directionText = "Move forward quickly";
+                      break;
+                    case "move_forward":
+                      directionText = "Move forward";
+                      break;
+                    case "approach_slowly":
+                      directionText = "Approach slowly";
+                      break;
+                    default:
+                      directionText = "Adjust your position";
+                  }
+
+                  const phrase = `${directionText}. QR is about ${distance} meters ahead.`;
+                  if (phrase !== lastInstruction) {
+                    await speak(phrase);
+                    showStatus(phrase);
+                    lastInstruction = phrase;
+                  }
+                }
+              }
+            } catch (e) {
+              console.error("QR scan error:", e);
+              showStatus("Backend error: " + e);
+            }
+          }, 700); // poll every 0.7s
+        });
+      }
+
+      // ---------------- Window Load ----------------
+      window.onload = () => {
+        showWelcome(); // start flow
+      };
+    </script>
+  </body>
+</html>
