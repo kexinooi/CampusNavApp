@@ -1,5 +1,6 @@
 fastapi
-uvicorn
+uvicorn[standard]
+gunicorn
 numpy
-opencv-python
 pyzbar
+opencv-python-headless
